@@ -1,22 +1,28 @@
+using Backend;
 using Microsoft.AspNetCore.Mvc;
-using WebApplication1.Controllers;
 
-namespace Backend;
+namespace WebApplication1.Controllers;
 
 [ApiController]
-[Route("[api]")]
+[Route("api")]
+[Consumes("application/json")]
 [Produces("application/json")]
-public class Controller(UserRepository userRepository) : ControllerBase
+[ProducesResponseType(StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+public class Controller : ControllerBase
 {
-    private UserRepository _userRepository = userRepository;
-
+    private readonly UserRepository _userRepository = UserRepositoryFactory.CreateUserRepository();
+    /// <summary>
+    /// Регистрация пользователя
+    /// </summary>
+    /// <returns>Токен авторизации</returns>
     [HttpPost]
     public IActionResult CreateUser([FromBody] User user)
     {
         try
         {
             _userRepository.AddUserAsync(user);
-            return Ok(new 
+            return Ok(new
             {
                 Status = 200,
                 Success = true,
@@ -27,7 +33,7 @@ public class Controller(UserRepository userRepository) : ControllerBase
         catch (Exception e)
         {
             Console.WriteLine(e);
-            return BadRequest(new 
+            return BadRequest(new
             {
                 Status = 400,
                 Success = false,
@@ -35,29 +41,28 @@ public class Controller(UserRepository userRepository) : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    ///  Получить историю пользователей
+    /// </summary>
     [HttpGet]
-    public IActionResult GetUserHistory()
+    public async Task<IActionResult> GetUserHistoryAsync()
     {
-        try
-        {
-            using var userHistory = _userRepository.GetUserHistoryAsync();
-            return Ok(new 
+        var userHistory = await _userRepository.GetUserHistoryAsync();
+
+        IEnumerable<UserHistory> userHistories = userHistory as UserHistory[] ?? userHistory.ToArray();
+        return userHistories.Any()
+            ? Ok(new
             {
                 Status = 200,
                 Success = true,
-                Message = "User history retrieved successfully",
-                UserHistory = userHistory
-            });
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            return BadRequest(new 
+                History = userHistories.ToArray()
+            })
+            : Ok(new
             {
-                Status = 400,
-                Success = false,
-                Message = "Error occurred while retrieving user history",
+                Status = 200,
+                Success = true,
+                Message = "User history is empty",
             });
-        }
     }
 }
