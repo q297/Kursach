@@ -4,7 +4,13 @@ namespace Backend;
 
 public class User
 {
-    [Required] string Login { get; set; }
-    [Required] string Password { get; set; }
-    [Required] [Compare(nameof(Password))] private string ConfirmPassword { get; set; }
+    [Required] public string Login { get; set; }
+    [Required] public string Password { get; set; }
+    [Required] [Compare(nameof(Password))] public string ConfirmPassword { get; set; }
+}
+
+public class UserChangePassword
+{
+    [Required] public string Login { get; set; }
+    [Required] public string NewPassword { get; set; }
 }

@@ -7,7 +7,7 @@ namespace WebApplication1.Controllers;
 
 public static class UserRepositoryFactory
 {
-    private static readonly IConfiguration _configuration = 
+    private static readonly IConfiguration _configuration =
         new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
 
     public static UserRepository CreateUserRepository()
@@ -17,48 +17,41 @@ public static class UserRepositoryFactory
     }
 }
 
-
-public interface IUserRepository
+public class UserRepository(IDbConnection dbConnection)
 {
-    void AddUserAsync(User user);
-    Task<IEnumerable<UserHistory>> GetUserHistoryAsync();
-    void DeleteUserHistoryAsync();
-    void ChangeUserPasswordAsync(string newPassword, string login);
-}
-
-public class UserRepository(IDbConnection dbConnection) : IUserRepository
-{
-    private readonly IDbConnection _dbConnection = dbConnection;
-
-    public async void AddUserAsync(User user)
+    public async Task<int> AddUserAsync(User user)
     {
-        const string sql = "INSERT INTO Users (Login, Password) VALUES (@Login, @Password)";
-        await _dbConnection.ExecuteAsync(sql, user);
+        const string sql = "INSERT INTO user (Login, Password) VALUES (@Login, @Password); SELECT last_insert_rowid();";
+
+        var userId = await dbConnection.ExecuteScalarAsync<int>(sql, user);
+
+        return userId;
     }
+
 
     public async void AddUserHistoryAsync(UserHistory userHistory)
     {
         const string sql = "INSERT INTO user_history (user_id, QueryType, QueryDetails, QueryTime) "
                            + "VALUES (@user_id, @QueryType, @QueryDetails, @QueryTime)";
-        await _dbConnection.ExecuteAsync(sql, userHistory);
+        await dbConnection.ExecuteAsync(sql, userHistory);
     }
 
-    public async Task<IEnumerable<UserHistory>> GetUserHistoryAsync()
+    public async Task<IEnumerable<UserHistory>> GetUserHistoryAsync(string id)
     {
         const string sql = "SELECT u.login, uh.QueryType, uh.QueryDetails, uh.QueryTime "
-                           + "FROM user_history uh JOIN user u ON uh.user_id = u.user_id";
-        return await _dbConnection.QueryAsync<UserHistory>(sql);
+                           + "FROM user_history uh JOIN user u ON uh.user_id = u.user_id WHERE u.user_id = @id";
+        return await dbConnection.QueryAsync<UserHistory>(sql, new { id });
     }
 
-    public async void DeleteUserHistoryAsync()
+    public async Task<int> DeleteUserHistoryAsync(string id)
     {
-        const string sql = "DELETE FROM user_history";
-        await _dbConnection.ExecuteAsync(sql);
+        const string sql = "DELETE FROM user_history WHERE user_id = @id ";
+        return await dbConnection.ExecuteAsync(sql, new { id });
     }
 
-    public async void ChangeUserPasswordAsync(string newPassword, string login)
+    public async Task ChangeUserPasswordAsync(string newPassword, string login)
     {
         const string sql = "UPDATE user SET Password = @newPassword WHERE login = @login";
-        await _dbConnection.ExecuteAsync(sql, new { newPassword, login });
+        await dbConnection.ExecuteAsync(sql, new { newPassword, login });
     }
 }

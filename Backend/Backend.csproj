@@ -17,10 +17,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="VIew\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <None Update="Models\Database.db">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
