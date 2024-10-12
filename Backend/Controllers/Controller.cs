@@ -12,9 +12,6 @@ namespace WebApplication1.Controllers;
 [Route("api")]
 [Consumes("application/json")]
 [Produces("application/json")]
-[ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
-[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public class Controller(ILogger<Controller> logger) : ControllerBase
 {
     private readonly UserRepository _userRepository = UserRepositoryFactory.CreateUserRepository();
@@ -149,6 +146,13 @@ public class Controller(ILogger<Controller> logger) : ControllerBase
     public async Task<IActionResult> PatchPasswordAsync([FromBody] UserChangesPassword request)
     {
         var path = Request.Path + " " + Request.Method;
+        if (await _userRepository.GetUserAsync(request.Login) == 0)
+        {
+            return Unauthorized(new
+            {
+                Message = "Такого пользователя не существует"
+            });
+        }
         try
         {
             await _userRepository.ChangeUserPasswordAsync(request);
