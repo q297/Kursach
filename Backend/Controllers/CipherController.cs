@@ -1,3 +1,4 @@
+using Backend;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,11 +9,15 @@ namespace WebApplication1.Controllers;
 [Route("api/cipher")]
 [Consumes("application/json")]
 [Produces("application/json")]
-public class CipherController(ILogger<Controller> logger) : ControllerBase
+public class CipherController(ILogger<Controller> logger, SqlCipherControllerFactory factory) : ControllerBase
 {
     private readonly ILogger _logger = logger;
-    private readonly SqlCipherController _sqlCipherController = CipherResositoryFactory.CreateSqlCipherController();
 
+    private readonly SqlCipherController _sqlCipherController = factory.CreateSqlCipherController();
+
+    /// <summary>
+    /// Добавить текст
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> AddTextAsync([FromBody] string request)
     {
@@ -21,18 +26,34 @@ public class CipherController(ILogger<Controller> logger) : ControllerBase
         return Ok();
     }
 
-    [HttpGet("{id:int?}")]
-    public async Task<IActionResult> GetTextAsync([FromRoute] int? id)
+    /// <summary>
+    /// Получить одно сообщение
+    /// </summary>
+    /// <param name="id">Номер сообщения</param>
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetTextAsync([FromRoute] int id)
     {
         var login = User.Identity!.Name!;
-        string? text;
-        if (id == null)
-            text = await _sqlCipherController.GetTextAsync(id = null, login);
-        else
-            text = await _sqlCipherController.GetTextAsync(id, login);
+        var text = (await _sqlCipherController.GetTextAsync(id, login))?.ToString();
         return text == null ? NotFound("Сообщение не найдено") : Ok(text);
     }
+    /// <summary>
+    /// Получить все тексты
+    /// </summary>
+    /// <param name="id">Номер сообщения</param>
+    [HttpGet]
+    public async Task<IActionResult> GetTextAsync()
+    {
+        var login = User.Identity!.Name!;
+        var text = await _sqlCipherController.GetTextAsync(login);
+        return text == null ? NotFound("Сообщения отсутствуют") : Ok(text);
+    }
 
+    /// <summary>
+    /// Изменить текст
+    /// </summary>
+    /// <param name="id">Номер текста</param>
+    /// <param name="request">Строка</param>
     [HttpPatch("{id:int}")]
     public async Task<IActionResult> ChangeTextAsync([FromRoute] int id, [FromBody] string request)
     {
@@ -40,7 +61,10 @@ public class CipherController(ILogger<Controller> logger) : ControllerBase
         await _sqlCipherController.ChangeTextAsync(id, request, login);
         return Ok("Текст изменён");
     }
-
+    /// <summary>
+    /// Удалить текст
+    /// </summary>
+    /// <param name="id">Номер текста</param>
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteTextAsync([FromRoute] int id)
     {
@@ -48,20 +72,30 @@ public class CipherController(ILogger<Controller> logger) : ControllerBase
         await _sqlCipherController.DeleteTextAsync(id, login);
         return Ok("Текст удалён");
     }
-
+    /// <summary>
+    /// Зашифровать текст
+    /// </summary>
+    /// <param name="id">Номер текста</param>
+    /// <param name="cipherUserSettings">Параметры для шифра табличной перестановки</param>
     [HttpPost("encrypt/{id:int}")]
-    public async Task<IActionResult> EncryptTextAsync([FromRoute] int id)
+    public async Task<IActionResult> EncryptTextAsync([FromRoute] int id,
+        [FromBody] CipherUserSettings cipherUserSettings)
     {
         var login = User.Identity!.Name!;
-        await _sqlCipherController.EncryptTextAsync(id,login);
+        await _sqlCipherController.EncryptTextAsync(id, login, cipherUserSettings);
         return Ok("Текст зашифрован");
     }
-
+    /// <summary>
+    /// Расшифровать текст
+    /// </summary>
+    /// <param name="id">Номер текста</param>
+    /// <param name="cipherUserSettings">Параметры для шифра табличной перестановки</param>
     [HttpPost("decrypt/{id:int}")]
-    public async Task<IActionResult> DecryptTextAsync([FromRoute] int id)
+    public async Task<IActionResult> DecryptTextAsync([FromRoute] int id,
+        [FromBody] CipherUserSettings cipherUserSettings)
     {
         var login = User.Identity!.Name!;
-        await _sqlCipherController.DecryptTextAsync(id, login);
+        await _sqlCipherController.DecryptTextAsync(id, login, cipherUserSettings);
         return Ok("Текст расшифрован");
     }
 }

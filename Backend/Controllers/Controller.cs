@@ -12,9 +12,9 @@ namespace WebApplication1.Controllers;
 [Route("api")]
 [Consumes("application/json")]
 [Produces("application/json")]
-public class Controller(ILogger<Controller> logger) : ControllerBase
+public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRepositoryFactory) : ControllerBase
 {
-    private readonly UserRepository _userRepository = UserRepositoryFactory.CreateUserRepository();
+    private readonly UserRepository _userRepository = userRepositoryFactory.CreateUserRepository();
     private readonly ILogger _logger = logger;
 
     /// <summary>

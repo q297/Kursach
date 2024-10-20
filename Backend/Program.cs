@@ -21,6 +21,9 @@ void ConfigureServices(IServiceCollection services)
 {
     services.AddControllers();
     services.AddEndpointsApiExplorer();
+    services.AddSingleton<ConfigurationString>();
+    services.AddSingleton<SqlCipherControllerFactory>();
+    services.AddSingleton<UserRepositoryFactory>();
     services.AddSwaggerGen(c =>
     {
         var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";

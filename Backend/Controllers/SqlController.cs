@@ -5,21 +5,16 @@ using Microsoft.Data.Sqlite;
 
 namespace WebApplication1.Controllers;
 
-public static class UserRepositoryFactory
+public class UserRepositoryFactory(ConfigurationString configuration)
 {
-    private static readonly IConfiguration _configuration =
-        new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
-
-    public static UserRepository CreateUserRepository()
+    public UserRepository CreateUserRepository()
     {
-        var connectionString = _configuration.GetConnectionString("MyDb1");
-        return new UserRepository(new SqliteConnection(connectionString));
+        return new UserRepository(new SqliteConnection(configuration.ConnectionString));
     }
 }
 
 public class UserRepository(IDbConnection dbConnection)
 {
-    private readonly ILogger<UserHistory> _logger;
     public async Task<int> AddUserAsync(User user)
     {
         const string sql = "INSERT INTO user (Login, Password) VALUES (@Login, @Password); SELECT last_insert_rowid();";
