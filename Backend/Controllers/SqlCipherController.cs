@@ -22,10 +22,10 @@ public class SqlCipherController(IDbConnection dbConnection)
         await dbConnection.ExecuteAsync(sql, new { UserLogin = userLogin, Text = text });
     }
 
-    public async Task<IEnumerable<string>> GetTextAsync(string login)
+    public async Task<IEnumerable<Message>> GetTextAsync(string login)
     {
-        const string sql1 = "SELECT Text FROM Messages WHERE UserLogin = @UserLogin;";
-        return await dbConnection.QueryAsync<string>(sql1, new { UserLogin = login });
+        const string sql1 = "SELECT Id, Text FROM Messages WHERE UserLogin = @UserLogin;";
+        return await dbConnection.QueryAsync<Message>(sql1, new { UserLogin = login });
     }
 
     public async Task<string?> GetTextAsync(int id, string login)
@@ -49,24 +49,20 @@ public class SqlCipherController(IDbConnection dbConnection)
     public async Task EncryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
     {
         var text = await GetTextAsync(id, login);
-        if (text != null)
-        {
-            _cipher.SecretKey = cipherUserSettings.SecretKey;
-            _cipher.Text = text;
-            _cipher.RowCount = cipherUserSettings.RowCount;
-        }
+        if (text == null) throw new Exception("Текст не найден");
+        _cipher.SecretKey = cipherUserSettings.SecretKey;
+        _cipher.Text = text;
+        _cipher.RowCount = cipherUserSettings.RowCount;
         await ChangeTextAsync(id, _cipher.Encrypt(), login);
     }
 
     public async Task DecryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
     {
         var text = await GetTextAsync(id, login);
-        if (text != null)
-        {
-            _cipher.SecretKey = cipherUserSettings.SecretKey;
-            _cipher.Text = text;
-            _cipher.RowCount = cipherUserSettings.RowCount;
-        }
+        if (text == null) throw new Exception("Текст не найден");
+        _cipher.SecretKey = cipherUserSettings.SecretKey;
+        _cipher.Text = text;
+        _cipher.RowCount = cipherUserSettings.RowCount;
         await ChangeTextAsync(id, _cipher.Decrypt(), login);
     }
 }

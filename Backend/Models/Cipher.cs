@@ -67,9 +67,7 @@ public class Cipher
         int index = 0;
         for (int i = 0; i < _columnCount; i++)
         {
-            int permIndex = permutation[i % permutation.Length];
-            Console.WriteLine($"Column {i} maps to permutation index {permIndex}");
-
+            int permIndex = permutation[i % permutation.Length]; 
             for (int j = 0; j < RowCount; j++)
             {
                 // Проверка на выход за границы массива

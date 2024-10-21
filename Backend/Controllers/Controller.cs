@@ -27,49 +27,38 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
     {
         var path = Request.Path + " " + Request.Method;
         var userExists = await _userRepository.GetUserAsync(user.Login);
-        try
+        if (userExists == 0)
         {
-            if (userExists == 0)
+            var userId = await _userRepository.AddUserAsync(user);
+            _logger.LogInformation("{Path}: User {UserId} created successfully", path, user.Login);
+            await _userRepository.AddUserHistoryAsync(new UserHistory(user.Login,
+                "Регистрация", ""));
+            return Ok(new
             {
-                var userId = await _userRepository.AddUserAsync(user);
-                _logger.LogInformation("{Path}: User {UserId} created successfully", path, user.Login);
-                await _userRepository.AddUserHistoryAsync(new UserHistory(user.Login,
-                    "Регистрация", ""));
-                return Ok(new
-                {
-                    Message = $"User created successfully with ID: {userId}",
-                    UserId = userId,
-                    Token = CreateJwt(user.Login)
-                });
-            }
+                Message = $"User created successfully with ID: {userId}",
+                UserId = userId,
+                Token = CreateJwt(user.Login)
+            });
+        }
 
-            var userID = await _userRepository.CheckUserAsync(user);
-            if (userID != 0)
-            {
-                await _userRepository.AddUserHistoryAsync(new UserHistory(user.Login,
-                    "Вход", "Возвращен токен"));
-                _logger.LogInformation("{Path}: User successfully enter. Return the token", path);
-                return Ok(new
-                {
-                    UserId =  userID,
-                    Token = CreateJwt(user.Login)
-                });
-            }
-            _logger.LogInformation("{Path}: User enter incorrect login or password", path);
-            return Unauthorized(new
-            {
-                Message = "incorrect login or password"
-            });
-        }
-        catch (Exception e)
+        var userID = await _userRepository.CheckUserAsync(user);
+        if (userID != 0)
         {
-            _logger.LogError(e, "{Path}: Error occurred while creating user {UserId}", path, user.Login);
-            return BadRequest(new
+            await _userRepository.AddUserHistoryAsync(new UserHistory(user.Login,
+                "Вход", "Возвращен токен"));
+            _logger.LogInformation("{Path}: User successfully enter. Return the token", path);
+            return Ok(new
             {
-                Status = 400,
-                Message = "Error occurred while creating user",
+                UserId = userID,
+                Token = CreateJwt(user.Login)
             });
         }
+
+        _logger.LogInformation("{Path}: User enter incorrect login or password", path);
+        return Unauthorized(new
+        {
+            Message = "incorrect login or password"
+        });
     }
 
     /// <summary>
@@ -87,6 +76,7 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
                 Message = "Вы не можете получить историю другого пользователя"
             });
         }
+
         var path = Request.Path + " " + Request.Method;
         var userHistory = await _userRepository.GetUserHistoryAsync(id);
         _logger.LogInformation("{Path}: User history retrieved", path);
@@ -122,6 +112,7 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
                 Message = "Вы не можете удалить историю другого пользователя"
             });
         }
+
         var path = Request.Path + " " + Request.Method;
         var affectedRows = await _userRepository.DeleteUserHistoryAsync(id);
         _logger.LogInformation("{Path}: User history deleted", path);
@@ -139,6 +130,7 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
                 Message = "Deleted rows: " + affectedRows,
             });
     }
+
     /// <summary>
     /// Изменить пароль
     /// </summary>
@@ -153,6 +145,7 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
                 Message = "Такого пользователя не существует"
             });
         }
+
         try
         {
             await _userRepository.ChangeUserPasswordAsync(request);
@@ -202,6 +195,7 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
         {
             return null; // токен не найден
         }
+
         var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
         var login = jwtToken.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
         return login;

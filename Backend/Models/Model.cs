@@ -33,3 +33,5 @@ public class ConfigurationString(IConfiguration configuration)
     public string CipherConnectionString => configuration.GetConnectionString("MyDB2") 
                                             ?? throw new InvalidOperationException("Строка подключения не может быть пустой");
 }
+
+public record struct Message(int Id, string Text);

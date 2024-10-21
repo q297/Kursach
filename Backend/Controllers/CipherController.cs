@@ -40,7 +40,6 @@ public class CipherController(ILogger<Controller> logger, SqlCipherControllerFac
     /// <summary>
     /// Получить все тексты
     /// </summary>
-    /// <param name="id">Номер сообщения</param>
     [HttpGet]
     public async Task<IActionResult> GetTextAsync()
     {
