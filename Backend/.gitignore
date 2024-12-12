@@ -22,12 +22,16 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
-
+Test/bin/
+Test/obj/
 # Visual Studio 2015 cache/options directory
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot
 #wwwroot/
-
+# Игнорирование временных файлов и сборок
+Backend/bin/
+Backend/obj/
+Backend/packages-cache/
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
@@ -45,7 +49,8 @@ dlldata.c
 project.lock.json
 project.fragment.lock.json
 artifacts/
-
+*.db
+*.sqlite
 *_i.c
 *_p.c
 *_i.h

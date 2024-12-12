@@ -70,12 +70,6 @@ public class Cipher
             int permIndex = permutation[i % permutation.Length]; 
             for (int j = 0; j < RowCount; j++)
             {
-                // Проверка на выход за границы массива
-                if (index >= result.Length || j >= RowCount || permIndex >= _columnCount)
-                {
-                    throw new IndexOutOfRangeException("Index out of bounds during encryption");
-                }
-
                 result[index++] = table[j, permIndex];
             }
         }

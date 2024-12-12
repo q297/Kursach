@@ -4,7 +4,6 @@ using Backend;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace WebApplication1.Controllers;
 
@@ -14,12 +13,12 @@ namespace WebApplication1.Controllers;
 [Produces("application/json")]
 public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRepositoryFactory) : ControllerBase
 {
-    private readonly UserRepository _userRepository = userRepositoryFactory.CreateUserRepository();
     private readonly ILogger _logger = logger;
+    private readonly UserRepository _userRepository = userRepositoryFactory.CreateUserRepository();
 
     /// <summary>
-    /// Регистрация пользователя и возврат JWT токена
-    /// Если пользователь уже зарегистрирован, то возвращает JWT токен
+    ///     Регистрация пользователя и возврат JWT токена
+    ///     Если пользователь уже зарегистрирован, то возвращает JWT токен
     /// </summary>
     /// <returns>Токен авторизации</returns>
     [HttpPost]
@@ -62,7 +61,7 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
     }
 
     /// <summary>
-    /// Получить историю пользователя
+    ///     Получить историю пользователя
     /// </summary>
     [HttpGet("id")]
     [Authorize]
@@ -70,12 +69,10 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
     {
         var login = User.Identity?.Name;
         if (login == null || await _userRepository.GetUserAsync(login) != id)
-        {
             return Unauthorized(new
             {
                 Message = "Вы не можете получить историю другого пользователя"
             });
-        }
 
         var path = Request.Path + " " + Request.Method;
         var userHistory = await _userRepository.GetUserHistoryAsync(id);
@@ -93,93 +90,73 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
             {
                 Status = 200,
                 Success = true,
-                Message = "User history is empty",
+                Message = "User history is empty"
             });
     }
 
     /// <summary>
-    /// Удалить историю пользователя
+    ///     Удалить историю пользователя
     /// </summary>
-    [HttpDelete("id")]
+    [HttpDelete]
     [Authorize]
-    public async Task<IActionResult> DeleteHistoryUserAsync(int id)
+    public async Task<IActionResult> DeleteHistoryUserAsync()
     {
         var login = User.Identity?.Name;
-        if (login == null || await _userRepository.GetUserAsync(login) != id)
-        {
-            return Unauthorized(new
-            {
-                Message = "Вы не можете удалить историю другого пользователя"
-            });
-        }
-
         var path = Request.Path + " " + Request.Method;
-        var affectedRows = await _userRepository.DeleteUserHistoryAsync(id);
+        var affectedRows = await _userRepository.DeleteUserHistoryAsync(login);
         _logger.LogInformation("{Path}: User history deleted", path);
         return affectedRows == 0
             ? Ok(new
             {
                 Status = 200,
                 Success = true,
-                Message = "User history is empty",
+                Message = "User history is empty"
             })
             : Ok(new
             {
                 Status = 200,
                 Success = true,
-                Message = "Deleted rows: " + affectedRows,
+                Message = "Deleted rows: " + affectedRows
             });
     }
 
     /// <summary>
-    /// Изменить пароль
+    ///     Изменить пароль
     /// </summary>
     [HttpPatch]
     public async Task<IActionResult> PatchPasswordAsync([FromBody] UserChangesPassword request)
     {
         var path = Request.Path + " " + Request.Method;
-        if (await _userRepository.GetUserAsync(request.Login) == 0)
+        if (!await _userRepository.ChangeUserPasswordAsync(request))
         {
+            _logger.LogInformation("{Path}: Неправильный логин или пароль", path);
             return Unauthorized(new
             {
-                Message = "Такого пользователя не существует"
+                Message = "Incorrect login or password"
             });
         }
 
-        try
-        {
-            await _userRepository.ChangeUserPasswordAsync(request);
-            _logger.LogInformation("{Path}: User password changed", path);
-            await _userRepository.AddUserHistoryAsync(new UserHistory(request.Login,
-                "Смена пароля", $"Старый пароль{request.Password}"));
+        _logger.LogInformation("{Path}: User password changed", path);
+        await _userRepository.AddUserHistoryAsync(new UserHistory(request.Login,
+            "Смена пароля", $"Старый пароль {request.Password}"));
 
-            return Ok(new
-            {
-                Status = 200,
-                Success = true,
-                Message = "User password changed",
-                Token = CreateJwt(request.Login)
-            });
-        }
-        catch (Exception e)
+        return Ok(new
         {
-            _logger.LogError(e, "{Path}: Error occurred while changing user password", path);
-            return BadRequest(new
-            {
-                Status = 400,
-                Message = "Error occurred while changing user password",
-            });
-        }
+            Status = 200,
+            Success = true,
+            Message = "User password changed",
+            Token = CreateJwt(request.Login)
+        });
     }
 
     [NonAction]
     private string CreateJwt(string value)
     {
-        var claims = new List<Claim> { new Claim(ClaimTypes.Name, value) };
+        var claims = new List<Claim> { new(ClaimTypes.Name, value) };
         var jwt = new JwtSecurityToken(
-            issuer: AuthOptions.ISSUER,
-            audience: AuthOptions.AUDIENCE,
-            claims: claims,
+            AuthOptions.ISSUER,
+            AuthOptions.AUDIENCE,
+            claims,
             expires: DateTime.UtcNow.Add(TimeSpan.FromDays(1)),
             signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(),
                 SecurityAlgorithms.HmacSha256));
@@ -191,10 +168,7 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
     private string? ReadJWT(HttpContext context)
     {
         var token = context.Request.Headers["Authorization"].FirstOrDefault();
-        if (string.IsNullOrEmpty(token))
-        {
-            return null; // токен не найден
-        }
+        if (string.IsNullOrEmpty(token)) return null; // токен не найден
 
         var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
         var login = jwtToken.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
