@@ -9,14 +9,12 @@ namespace WebApplication1.Controllers;
 [Route("api/cipher")]
 [Consumes("application/json")]
 [Produces("application/json")]
-public class CipherController(ILogger<Controller> logger, SqlCipherControllerFactory factory) : ControllerBase
+public class CipherController(SqlCipherControllerFactory factory) : ControllerBase
 {
-    private readonly ILogger _logger = logger;
-
     private readonly SqlCipherController _sqlCipherController = factory.CreateSqlCipherController();
 
     /// <summary>
-    /// Добавить текст
+    ///     Добавить текст
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> AddTextAsync([FromBody] string request)
@@ -27,18 +25,19 @@ public class CipherController(ILogger<Controller> logger, SqlCipherControllerFac
     }
 
     /// <summary>
-    /// Получить одно сообщение
+    ///     Получить одно сообщение
     /// </summary>
     /// <param name="id">Номер сообщения</param>
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetTextAsync([FromRoute] int id)
     {
         var login = User.Identity!.Name!;
-        var text = (await _sqlCipherController.GetTextAsync(id, login))?.ToString();
+        var text = (await _sqlCipherController.GetTextAsync(id, login));
         return text == null ? NotFound("Сообщение не найдено") : Ok(text);
     }
+
     /// <summary>
-    /// Получить все тексты
+    ///     Получить все тексты
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetTextAsync()
@@ -49,7 +48,7 @@ public class CipherController(ILogger<Controller> logger, SqlCipherControllerFac
     }
 
     /// <summary>
-    /// Изменить текст
+    ///     Изменить текст
     /// </summary>
     /// <param name="id">Номер текста</param>
     /// <param name="request">Строка</param>
@@ -60,8 +59,9 @@ public class CipherController(ILogger<Controller> logger, SqlCipherControllerFac
         await _sqlCipherController.ChangeTextAsync(id, request, login);
         return Ok("Текст изменён");
     }
+
     /// <summary>
-    /// Удалить текст
+    ///     Удалить текст
     /// </summary>
     /// <param name="id">Номер текста</param>
     [HttpDelete("{id:int}")]
@@ -71,8 +71,9 @@ public class CipherController(ILogger<Controller> logger, SqlCipherControllerFac
         await _sqlCipherController.DeleteTextAsync(id, login);
         return Ok("Текст удалён");
     }
+
     /// <summary>
-    /// Зашифровать текст
+    ///     Зашифровать текст
     /// </summary>
     /// <param name="id">Номер текста</param>
     /// <param name="cipherUserSettings">Параметры для шифра табличной перестановки</param>
@@ -80,12 +81,20 @@ public class CipherController(ILogger<Controller> logger, SqlCipherControllerFac
     public async Task<IActionResult> EncryptTextAsync([FromRoute] int id,
         [FromBody] CipherUserSettings cipherUserSettings)
     {
-        var login = User.Identity!.Name!;
-        await _sqlCipherController.EncryptTextAsync(id, login, cipherUserSettings);
-        return Ok("Текст зашифрован");
+        try
+        {
+            var login = User.Identity!.Name!;
+            await _sqlCipherController.EncryptTextAsync(id, login, cipherUserSettings);
+            return Ok("Текст зашифрован");
+        }
+        catch (ArgumentException)
+        {
+            return NotFound(new { Message = id });
+        }
     }
+
     /// <summary>
-    /// Расшифровать текст
+    ///     Расшифровать текст
     /// </summary>
     /// <param name="id">Номер текста</param>
     /// <param name="cipherUserSettings">Параметры для шифра табличной перестановки</param>
@@ -93,8 +102,15 @@ public class CipherController(ILogger<Controller> logger, SqlCipherControllerFac
     public async Task<IActionResult> DecryptTextAsync([FromRoute] int id,
         [FromBody] CipherUserSettings cipherUserSettings)
     {
-        var login = User.Identity!.Name!;
-        await _sqlCipherController.DecryptTextAsync(id, login, cipherUserSettings);
-        return Ok("Текст расшифрован");
+        try
+        {
+            var login = User.Identity!.Name!;
+            await _sqlCipherController.DecryptTextAsync(id, login, cipherUserSettings);
+            return Ok("Текст расшифрован");
+        }
+        catch (ArgumentException)
+        {
+            return NotFound(new { Message = id });
+        }
     }
 }

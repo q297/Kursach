@@ -15,7 +15,8 @@ public class SqlCipherControllerFactory(ConfigurationString configurationString)
 
 public class SqlCipherController(IDbConnection dbConnection)
 {
-    private Cipher _cipher = new Cipher();
+    private readonly Cipher _cipher = new();
+
     public async Task AddTextAsync(string text, string userLogin)
     {
         const string sql = "INSERT INTO Messages (UserLogin, Text) VALUES (@UserLogin, @Text);";
@@ -37,7 +38,7 @@ public class SqlCipherController(IDbConnection dbConnection)
     public async Task ChangeTextAsync(int id, string request, string login)
     {
         const string sql = "UPDATE Messages SET Text = @Text WHERE Id = @Id AND UserLogin = @UserLogin;";
-        await dbConnection.ExecuteAsync(sql, new {Id = id, Text = request, UserLogin = login });
+        await dbConnection.ExecuteAsync(sql, new { Id = id, Text = request, UserLogin = login });
     }
 
     public async Task DeleteTextAsync(int id, string login)
@@ -49,7 +50,7 @@ public class SqlCipherController(IDbConnection dbConnection)
     public async Task EncryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
     {
         var text = await GetTextAsync(id, login);
-        if (text == null) throw new Exception("Текст не найден");
+        if (text == null) throw new ArgumentException("Текст не найден");
         _cipher.SecretKey = cipherUserSettings.SecretKey;
         _cipher.Text = text;
         _cipher.RowCount = cipherUserSettings.RowCount;
@@ -59,7 +60,7 @@ public class SqlCipherController(IDbConnection dbConnection)
     public async Task DecryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
     {
         var text = await GetTextAsync(id, login);
-        if (text == null) throw new Exception("Текст не найден");
+        if (text == null) throw new ArgumentException("Текст не найден");
         _cipher.SecretKey = cipherUserSettings.SecretKey;
         _cipher.Text = text;
         _cipher.RowCount = cipherUserSettings.RowCount;

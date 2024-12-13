@@ -56,26 +56,20 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
         _logger.LogInformation("{Path}: User enter incorrect login or password", path);
         return Unauthorized(new
         {
-            Message = "incorrect login or password"
+            Message = "Incorrect login or password"
         });
     }
 
     /// <summary>
     ///     Получить историю пользователя
     /// </summary>
-    [HttpGet("id")]
+    [HttpGet]
     [Authorize]
-    public async Task<IActionResult> GetUserHistoryAsync(int id)
+    public async Task<IActionResult> GetUserHistoryAsync()
     {
         var login = User.Identity?.Name;
-        if (login == null || await _userRepository.GetUserAsync(login) != id)
-            return Unauthorized(new
-            {
-                Message = "Вы не можете получить историю другого пользователя"
-            });
-
         var path = Request.Path + " " + Request.Method;
-        var userHistory = await _userRepository.GetUserHistoryAsync(id);
+        var userHistory = await _userRepository.GetUserHistoryAsync(login);
         _logger.LogInformation("{Path}: User history retrieved", path);
 
         IEnumerable<UserHistory> userHistories = userHistory as UserHistory[] ?? userHistory.ToArray();

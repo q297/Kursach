@@ -54,11 +54,11 @@ public class UserRepository(IDbConnection dbConnection)
         await dbConnection.ExecuteAsync(sql, userHistory);
     }
 
-    public async Task<IEnumerable<UserHistory>> GetUserHistoryAsync(int id)
+    public async Task<IEnumerable<UserHistory>> GetUserHistoryAsync(string login)
     {
         const string sql = "SELECT u.login, uh.QueryType, uh.QueryDetails, uh.QueryTime "
-                           + "FROM user_history uh JOIN user u ON uh.user_id = u.user_id WHERE u.user_id = @id";
-        return await dbConnection.QueryAsync<UserHistory>(sql, new { id });
+                           + "FROM user_history uh JOIN user u ON uh.user_id = u.user_id WHERE u.login = @login";
+        return await dbConnection.QueryAsync<UserHistory>(sql, new { login });
     }
 
     public async Task<int> DeleteUserHistoryAsync(string login)
@@ -71,6 +71,6 @@ public class UserRepository(IDbConnection dbConnection)
     public async Task<bool> ChangeUserPasswordAsync(UserChangesPassword user)
     {
         const string sql = "UPDATE user SET Password = @NewPassword WHERE login = @Login and Password = @Password";
-        return await dbConnection.ExecuteAsync(sql, user) == 1;
+        return await dbConnection.QuerySingleOrDefaultAsync<int>(sql, user) == 1;
     }
 }
