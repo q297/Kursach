@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Backend;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -148,8 +147,8 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
     {
         var claims = new List<Claim> { new(ClaimTypes.Name, value) };
         var jwt = new JwtSecurityToken(
-            AuthOptions.ISSUER,
-            AuthOptions.AUDIENCE,
+            AuthOptions.Issuer,
+            AuthOptions.Audience,
             claims,
             expires: DateTime.UtcNow.Add(TimeSpan.FromDays(1)),
             signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(),

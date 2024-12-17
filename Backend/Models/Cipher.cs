@@ -1,120 +1,71 @@
-namespace Backend;
-
-public class Cipher
+internal class Crypter
 {
-    private int _columnCount;
-    private int _rowCount;
-    private string _text;
-    private bool _needsRecalculate;
-    public string SecretKey { get; set; }
+    private string _keyword;
+    private int[] _permutation;
+    private int _width;
+    public int Height;
 
-    public int RowCount
+    public string Keyword
     {
-        get => _rowCount;
+        get => _keyword;
         set
         {
-            _rowCount = value;
-            _needsRecalculate = true;
+            _keyword = value;
+            _width = _keyword.Length;
+            _permutation = new int[_width];
+            for (var i = 0; i < _width; i++) _permutation[i] = i;
+
+            Array.Sort(_keyword.ToCharArray(), _permutation);
         }
     }
 
-    public string Text
+    public string Encode(string src)
     {
-        get => _text;
-        set
-        {
-            _text = value;
-            _needsRecalculate = true;
-        }
-    }
-    private void RecalculateColumnCount()
-    {
-        if (!string.IsNullOrEmpty(_text) && _rowCount > 0)
-            _columnCount = (_text.Length + _rowCount - 1) / _rowCount;
-        else
-            throw new ArgumentException("Введено некорректное значение");
+        var totalCells = _width * Height;
 
-        _needsRecalculate = false;
-    }
-
-    public string Encrypt()
-    {
-        if(_needsRecalculate)
-            RecalculateColumnCount();
-        char[,] table = new char[RowCount, _columnCount];
-        for (int i = 0; i < Text.Length; i++)
+        // Если длина строки меньше требуемой, дополняем пробелами
+        if (src.Length < totalCells)
         {
-            int row = i / _columnCount;
-            int col = i % _columnCount;
-            table[row, col] = Text[i];
+            src = src.PadRight(totalCells, ' ');
         }
-        for (int i = Text.Length; i < RowCount * _columnCount; i++)
+        // Если длина строки больше, увеличиваем ширину
+        else if (src.Length > totalCells)
         {
-            int row = i / _columnCount;
-            int col = i % _columnCount;
-            table[row, col] = ' ';
-        }
-        string trimmedKey = SecretKey.Length > _columnCount 
-            ? SecretKey.Substring(0, _columnCount) : SecretKey;
-        int[] permutation = new int[trimmedKey.Length];
-
-        for (int i = 0; i < permutation.Length; i++)
-        {
-            permutation[i] = i;
-        }
-        Array.Sort(trimmedKey.ToCharArray(), permutation);
-        char[] result = new char[RowCount * _columnCount];
-        int index = 0;
-        for (int i = 0; i < _columnCount; i++)
-        {
-            int permIndex = permutation[i % permutation.Length]; 
-            for (int j = 0; j < RowCount; j++)
-            {
-                result[index++] = table[j, permIndex];
-            }
+            var newHeight = (int)Math.Ceiling((double)src.Length / _width);
+            Height = newHeight;
+            totalCells = _width * Height;
+            src = src.PadRight(totalCells, ' ');
         }
 
-        return new string(result).Trim();
+        var res = new char[src.Length];
+        for (var i = 0; i < Height; i++)
+        for (var j = 0; j < _width; j++)
+            res[i * _width + j] = src[_permutation[j] * Height + i];
+        return new string(res);
     }
 
-    public string Decrypt()
+    public string Decode(string src)
     {
-        int columnCount = (Text.Length + RowCount - 1) / RowCount;
+        var totalCells = _width * Height;
 
-        char[,] table = new char[RowCount, columnCount];
-
-        string trimmedKey = SecretKey.Length > columnCount ? SecretKey.Substring(0, columnCount) : SecretKey;
-
-        int[] permutation = new int[trimmedKey.Length];
-        for (int i = 0; i < permutation.Length; i++)
+        // Если длина строки меньше требуемой, дополняем пробелами
+        if (src.Length < totalCells)
         {
-            permutation[i] = i;
+            src = src.PadRight(totalCells, ' ');
+        }
+        // Если длина строки больше, увеличиваем ширину
+        else if (src.Length > totalCells)
+        {
+            var newHeight = (int)Math.Ceiling((double)src.Length / _width);
+            Height = newHeight;
+            totalCells = _width * Height;
+            src = src.PadRight(totalCells, ' ');
         }
 
-        Array.Sort(trimmedKey.ToCharArray(), permutation);
-
-        int index = 0;
-        for (int i = 0; i < columnCount; i++)
-        {
-            int permIndex = permutation[i % permutation.Length];
-
-            for (int j = 0; j < RowCount; j++)
-            {
-                table[j, permIndex] = Text[index++];
-            }
-        }
-
-        char[] result = new char[Text.Length];
-        index = 0;
-        for (int i = 0; i < RowCount; i++)
-        {
-            for (int j = 0; j < columnCount; j++)
-            {
-                result[index++] = table[i, j];
-            }
-        }
-
-        return new string(result).Trim();
+        var res = new char[src.Length];
+        for (var i = 0; i < _width; i++)
+        for (var j = 0; j < Height; j++)
+            res[_permutation[i] * Height + j] = src[j * _width + i];
+        return new string(res).TrimEnd();
     }
 }
- 

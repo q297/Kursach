@@ -15,7 +15,7 @@ public class SqlCipherControllerFactory(ConfigurationString configurationString)
 
 public class SqlCipherController(IDbConnection dbConnection)
 {
-    private readonly Cipher _cipher = new();
+    private readonly Crypter _crypter = new();
 
     public async Task AddTextAsync(string text, string userLogin)
     {
@@ -25,19 +25,20 @@ public class SqlCipherController(IDbConnection dbConnection)
 
     public async Task<IEnumerable<Message>> GetTextAsync(string login)
     {
-        const string sql1 = "SELECT Id, Text FROM Messages WHERE UserLogin = @UserLogin;";
-        return await dbConnection.QueryAsync<Message>(sql1, new { UserLogin = login });
+        const string sql = "SELECT MessageNumber, Text FROM Messages WHERE UserLogin = @UserLogin;";
+        return await dbConnection.QueryAsync<Message>(sql, new { UserLogin = login });
     }
 
-    public async Task<string?> GetTextAsync(int id, string login)
+    public async Task<string?> GetTextAsync(int messageNumber, string login)
     {
-        const string sql = "SELECT Text FROM Messages WHERE Id = @Id AND UserLogin = @UserLogin;";
-        return await dbConnection.QuerySingleOrDefaultAsync<string>(sql, new { Id = id, UserLogin = login });
+        const string sql = "SELECT Text FROM Messages WHERE MessageNumber = @MessageNumber AND UserLogin = @UserLogin;";
+        return await dbConnection.QuerySingleOrDefaultAsync<string>(sql,
+            new { MessageNumber = messageNumber, UserLogin = login });
     }
 
     public async Task ChangeTextAsync(int id, string request, string login)
     {
-        const string sql = "UPDATE Messages SET Text = @Text WHERE Id = @Id AND UserLogin = @UserLogin;";
+        const string sql = "UPDATE Messages SET Text = @Text WHERE MessageNumber = @Id AND UserLogin = @UserLogin;";
         await dbConnection.ExecuteAsync(sql, new { Id = id, Text = request, UserLogin = login });
     }
 
@@ -47,23 +48,23 @@ public class SqlCipherController(IDbConnection dbConnection)
         await dbConnection.ExecuteAsync(sql, new { Id = id, UserLogin = login });
     }
 
-    public async Task EncryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
+    public async Task<bool> EncryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
     {
         var text = await GetTextAsync(id, login);
-        if (text == null) throw new ArgumentException("Текст не найден");
-        _cipher.SecretKey = cipherUserSettings.SecretKey;
-        _cipher.Text = text;
-        _cipher.RowCount = cipherUserSettings.RowCount;
-        await ChangeTextAsync(id, _cipher.Encrypt(), login);
+        if (text == null) return false;
+        _crypter.Keyword = cipherUserSettings.SecretKey;
+        _crypter.Height = cipherUserSettings.RowCount;
+        await ChangeTextAsync(id, _crypter.Encode(text), login);
+        return true;
     }
 
-    public async Task DecryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
+    public async Task<bool> DecryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
     {
         var text = await GetTextAsync(id, login);
-        if (text == null) throw new ArgumentException("Текст не найден");
-        _cipher.SecretKey = cipherUserSettings.SecretKey;
-        _cipher.Text = text;
-        _cipher.RowCount = cipherUserSettings.RowCount;
-        await ChangeTextAsync(id, _cipher.Decrypt(), login);
+        if (text == null) return false;
+        _crypter.Keyword = cipherUserSettings.SecretKey;
+        _crypter.Height = cipherUserSettings.RowCount;
+        await ChangeTextAsync(id, _crypter.Decode(text), login);
+        return true;
     }
 }

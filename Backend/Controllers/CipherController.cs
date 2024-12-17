@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Backend;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,7 @@ public class CipherController(SqlCipherControllerFactory factory) : ControllerBa
     public async Task<IActionResult> GetTextAsync([FromRoute] int id)
     {
         var login = User.Identity!.Name!;
-        var text = (await _sqlCipherController.GetTextAsync(id, login));
+        var text = await _sqlCipherController.GetTextAsync(id, login);
         return text == null ? NotFound("Сообщение не найдено") : Ok(text);
     }
 
@@ -44,6 +45,7 @@ public class CipherController(SqlCipherControllerFactory factory) : ControllerBa
     {
         var login = User.Identity!.Name!;
         var text = await _sqlCipherController.GetTextAsync(login);
+        Debug.WriteLine(text);
         return text == null ? NotFound("Сообщения отсутствуют") : Ok(text);
     }
 
@@ -81,16 +83,11 @@ public class CipherController(SqlCipherControllerFactory factory) : ControllerBa
     public async Task<IActionResult> EncryptTextAsync([FromRoute] int id,
         [FromBody] CipherUserSettings cipherUserSettings)
     {
-        try
-        {
-            var login = User.Identity!.Name!;
-            await _sqlCipherController.EncryptTextAsync(id, login, cipherUserSettings);
-            return Ok("Текст зашифрован");
-        }
-        catch (ArgumentException)
-        {
-            return NotFound(new { Message = id });
-        }
+        if (ModelState.IsValid == false) return BadRequest(ModelState);
+        var login = User.Identity!.Name!;
+        var result = await _sqlCipherController.EncryptTextAsync(id, login, cipherUserSettings);
+        if (result) return Ok("Текст зашифрован");
+        return NotFound("Текст не найден");
     }
 
     /// <summary>
@@ -102,15 +99,10 @@ public class CipherController(SqlCipherControllerFactory factory) : ControllerBa
     public async Task<IActionResult> DecryptTextAsync([FromRoute] int id,
         [FromBody] CipherUserSettings cipherUserSettings)
     {
-        try
-        {
-            var login = User.Identity!.Name!;
-            await _sqlCipherController.DecryptTextAsync(id, login, cipherUserSettings);
-            return Ok("Текст расшифрован");
-        }
-        catch (ArgumentException)
-        {
-            return NotFound(new { Message = id });
-        }
+        if (ModelState.IsValid == false) return BadRequest(ModelState);
+        var login = User.Identity!.Name!;
+        var result = await _sqlCipherController.DecryptTextAsync(id, login, cipherUserSettings);
+        if (result) return Ok("Текст расшифрован");
+        return NotFound("Текст не найден");
     }
 }

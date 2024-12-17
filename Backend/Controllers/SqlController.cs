@@ -70,7 +70,8 @@ public class UserRepository(IDbConnection dbConnection)
 
     public async Task<bool> ChangeUserPasswordAsync(UserChangesPassword user)
     {
-        const string sql = "UPDATE user SET Password = @NewPassword WHERE login = @Login and Password = @Password";
-        return await dbConnection.QuerySingleOrDefaultAsync<int>(sql, user) == 1;
+        const string sql = "UPDATE user SET Password = @NewPassword WHERE login = @Login AND Password = @Password";
+        var affectedRows = await dbConnection.ExecuteAsync(sql, user);
+        return affectedRows > 0; // Вернёт true, если была затронута хотя бы одна строка
     }
 }

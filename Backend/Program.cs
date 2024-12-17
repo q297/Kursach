@@ -46,7 +46,7 @@ void ConfigureServices(IServiceCollection services)
                 // указывает, будет ли валидироваться издатель при валидации токена
                 ValidateIssuer = true,
                 // строка, представляющая издателя
-                ValidIssuer = AuthOptions.ISSUER,
+                ValidIssuer = AuthOptions.Issuer,
                 // будет ли валидироваться потребитель токена
                 ValidateAudience = false,
                 // будет ли валидироваться время существования
