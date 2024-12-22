@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Backend;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,8 +9,9 @@ namespace WebApplication1.Controllers;
 [Route("api/cipher")]
 [Consumes("application/json")]
 [Produces("application/json")]
-public class CipherController(SqlCipherControllerFactory factory) : ControllerBase
+public class CipherController(SqlCipherControllerFactory factory, ILogger<Controller> logger) : ControllerBase
 {
+    private readonly ILogger _logger = logger;
     private readonly SqlCipherController _sqlCipherController = factory.CreateSqlCipherController();
 
     /// <summary>
@@ -21,8 +21,10 @@ public class CipherController(SqlCipherControllerFactory factory) : ControllerBa
     public async Task<IActionResult> AddTextAsync([FromBody] string request)
     {
         var login = User.Identity!.Name!;
-        await _sqlCipherController.AddTextAsync(request, login);
-        return Ok();
+        _logger.LogInformation("{Path}: Пользователь {UserId} добавил сообщение", Request.Path + " " + Request.Method,
+            login);
+        var id = await _sqlCipherController.AddTextAsync(request, login);
+        return Ok(id);
     }
 
     /// <summary>

@@ -17,45 +17,47 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
 
     /// <summary>
     ///     Регистрация пользователя и возврат JWT токена
-    ///     Если пользователь уже зарегистрирован, то возвращает JWT токен
     /// </summary>
     /// <returns>Токен авторизации</returns>
-    [HttpPost]
-    public async Task<IActionResult> CreateUserAsync([FromBody] User user)
+    [HttpPost("register")]
+    public async Task<IActionResult> RegisterUserAsync([FromBody] User user)
+    {
+        if (_userRepository.GetUserAsync(user.Login).Result != 0) return BadRequest("User already exist");
+        var path = Request.Path + " " + Request.Method;
+
+        var userId = await _userRepository.AddUserAsync(user);
+        _logger.LogInformation("{Path}: User {UserId} created successfully", path, user.Login);
+        await _userRepository.AddUserHistoryAsync(new UserHistory(user.Login,
+            "Регистрация", ""));
+        return Ok(new
+        {
+            Message = $"User created successfully with ID: {userId}",
+            UserId = userId,
+            Token = CreateJwt(user.Login),
+            Expiry = DateTime.UtcNow.Add(TimeSpan.FromDays(1))
+        });
+    }
+
+    /// <summary>
+    ///     Авторизация
+    /// </summary>
+    /// <param name="user"></param>
+    /// <returns>Возвращается JWT токен </returns>
+    [HttpPost("login")]
+    public async Task<IActionResult> LoginUserAsync([FromBody] User user)
     {
         var path = Request.Path + " " + Request.Method;
-        var userExists = await _userRepository.GetUserAsync(user.Login);
-        if (userExists == 0)
-        {
-            var userId = await _userRepository.AddUserAsync(user);
-            _logger.LogInformation("{Path}: User {UserId} created successfully", path, user.Login);
-            await _userRepository.AddUserHistoryAsync(new UserHistory(user.Login,
-                "Регистрация", ""));
-            return Ok(new
-            {
-                Message = $"User created successfully with ID: {userId}",
-                UserId = userId,
-                Token = CreateJwt(user.Login)
-            });
-        }
+        var userId = await _userRepository.CheckUserAsync(user);
+        if (userId == 0) return Unauthorized(new { Message = "Incorrect login or password" });
 
-        var userID = await _userRepository.CheckUserAsync(user);
-        if (userID != 0)
+        await _userRepository.AddUserHistoryAsync(new UserHistory(user.Login,
+            "Вход", "Возвращен токен"));
+        _logger.LogInformation("{Path}: User successfully enter. Return the token", path);
+        return Ok(new
         {
-            await _userRepository.AddUserHistoryAsync(new UserHistory(user.Login,
-                "Вход", "Возвращен токен"));
-            _logger.LogInformation("{Path}: User successfully enter. Return the token", path);
-            return Ok(new
-            {
-                UserId = userID,
-                Token = CreateJwt(user.Login)
-            });
-        }
-
-        _logger.LogInformation("{Path}: User enter incorrect login or password", path);
-        return Unauthorized(new
-        {
-            Message = "Incorrect login or password"
+            UserId = userId,
+            Token = CreateJwt(user.Login),
+            Expiry = DateTime.UtcNow.Add(TimeSpan.FromDays(1))
         });
     }
 
@@ -75,14 +77,10 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
         return userHistories.Any()
             ? Ok(new
             {
-                Status = 200,
-                Success = true,
-                History = userHistories.ToArray()
+                userHistories
             })
             : Ok(new
             {
-                Status = 200,
-                Success = true,
                 Message = "User history is empty"
             });
     }
@@ -101,13 +99,11 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
         return affectedRows == 0
             ? Ok(new
             {
-                Status = 200,
                 Success = true,
                 Message = "User history is empty"
             })
             : Ok(new
             {
-                Status = 200,
                 Success = true,
                 Message = "Deleted rows: " + affectedRows
             });
@@ -131,13 +127,11 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
 
         _logger.LogInformation("{Path}: User password changed", path);
         await _userRepository.AddUserHistoryAsync(new UserHistory(request.Login,
-            "Смена пароля", $"Старый пароль {request.Password}"));
+            "Смена пароля", $"Старый пароль {new string('*', request.Password.Length)}"));
 
         return Ok(new
         {
-            Status = 200,
-            Success = true,
-            Message = "User password changed",
+            Message = "Password changed successfully",
             Token = CreateJwt(request.Login)
         });
     }

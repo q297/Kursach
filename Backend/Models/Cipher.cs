@@ -22,13 +22,11 @@ internal class Crypter
     public string Encode(string src)
     {
         var totalCells = _width * Height;
-
-        // Если длина строки меньше требуемой, дополняем пробелами
+        
         if (src.Length < totalCells)
         {
             src = src.PadRight(totalCells, ' ');
         }
-        // Если длина строки больше, увеличиваем ширину
         else if (src.Length > totalCells)
         {
             var newHeight = (int)Math.Ceiling((double)src.Length / _width);
@@ -47,13 +45,11 @@ internal class Crypter
     public string Decode(string src)
     {
         var totalCells = _width * Height;
-
-        // Если длина строки меньше требуемой, дополняем пробелами
+        
         if (src.Length < totalCells)
         {
             src = src.PadRight(totalCells, ' ');
         }
-        // Если длина строки больше, увеличиваем ширину
         else if (src.Length > totalCells)
         {
             var newHeight = (int)Math.Ceiling((double)src.Length / _width);

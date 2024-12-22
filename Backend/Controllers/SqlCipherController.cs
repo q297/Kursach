@@ -1,5 +1,4 @@
 using System.Data;
-using Backend;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -17,10 +16,13 @@ public class SqlCipherController(IDbConnection dbConnection)
 {
     private readonly Crypter _crypter = new();
 
-    public async Task AddTextAsync(string text, string userLogin)
+    public async Task<int> AddTextAsync(string text, string userLogin)
     {
         const string sql = "INSERT INTO Messages (UserLogin, Text) VALUES (@UserLogin, @Text);";
+        const string sql2 =
+            "SELECT MessageNumber FROM Messages WHERE UserLogin = @UserLogin ORDER BY MessageNumber DESC LIMIT 1;";
         await dbConnection.ExecuteAsync(sql, new { UserLogin = userLogin, Text = text });
+        return await dbConnection.ExecuteScalarAsync<int>(sql2, new { UserLogin = userLogin });
     }
 
     public async Task<IEnumerable<Message>> GetTextAsync(string login)

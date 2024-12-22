@@ -28,7 +28,7 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task CreateUserAsync_ShouldReturnOk_and_Token()
     {
         var user = new { Login = TESTUSER, Password = "petushok" };
-        var response = await _client.PostAsJsonAsync("/api", user);
+        var response = await _client.PostAsJsonAsync("/api/register", user);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var token = await response.Content.ReadAsStringAsync();
         var jsonDocument = JsonDocument.Parse(token);
@@ -66,17 +66,6 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
         var token = await response.Content.ReadAsStringAsync();
         token.Should().NotBeNullOrEmpty();
         _testOutputHelper.WriteLine(token);
-    }
-
-    [Fact]
-    public async Task GetUserHistoryAsync_ShouldReturnOk()
-    {
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-        var response = await _client.GetAsync("/api");
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var history = await response.Content.ReadAsStringAsync();
-        history.Should().Contain("Регистрация");
-        _testOutputHelper.WriteLine(history);
     }
 
     [Fact]

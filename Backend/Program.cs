@@ -10,8 +10,12 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.MapControllers();
-app.UseSwagger();
-app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1"); });
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1"); });
+}
+
 app.UseAuthentication().UseAuthorization();
 app.UseHttpsRedirection();
 app.Run();
@@ -54,7 +58,7 @@ void ConfigureServices(IServiceCollection services)
                 // установка ключа безопасности
                 IssuerSigningKey = AuthOptions.GetSymmetricSecurityKey(),
                 // валидация ключа безопасности
-                ValidateIssuerSigningKey = true,
+                ValidateIssuerSigningKey = true
             };
         });
     services.AddAuthorization();
