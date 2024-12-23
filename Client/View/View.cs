@@ -7,226 +7,243 @@ namespace Client.View;
 internal class View
 {
     private readonly Controller.ApiClient _client = new();
-    private readonly UserManager _userManager = new();
     private Settings _settings;
     private User _user;
 
     private async Task<bool> RegisterLogin()
     {
-        var url = string.Empty;
-        var result = AnsiConsole.Prompt(new SelectionPrompt<string>()
-            .Title("Выберите, что хотите сделать.")
-            .AddChoices("[green]Зарегистрироваться[/]", "[green]Войти[/]", "[red3]Выход из программы[/]"));
-        switch (result)
-        {
-            case "[green]Зарегистрироваться[/]":
-                url = "register";
-                break;
-            case "[green]Войти[/]":
-                url = "login";
-                break;
-            case "[red3]Выход из программы[/]":
-                Environment.Exit(0);
-                break;
-        }
+        var url = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Выберите действие:")
+            .AddChoices("Зарегистрироваться", "Войти", "Выход из программы"));
 
-        _user.Login = AnsiConsole.Prompt(new TextPrompt<string>("Введите логин: "));
-        _user.Password = AnsiConsole.Prompt(new TextPrompt<string>("Введите пароль: ").Secret());
+        if (url == "Выход из программы") Environment.Exit(0);
+
+        url = url == "Зарегистрироваться" ? "register" : "login";
+
+        _user.Login = AnsiConsole.Prompt(new TextPrompt<string>("Введите логин:"));
+        _user.Password = AnsiConsole.Prompt(new TextPrompt<string>("Введите пароль:").Secret());
+
         return await _client.RegisterOrLoginAsync(url, _user);
+    }
+
+    private async Task EnsureUserAuthenticated()
+    {
+        while (_user.Login == null || string.IsNullOrEmpty(_user.Jwt))
+        {
+            AnsiConsole.MarkupLine(_user.Login == null
+                ? "[red]Данные о пользователе не найдены.[/]"
+                : "[red]Токен не найден или просрочен.[/]");
+
+            if (!await RegisterLogin())
+                AnsiConsole.MarkupLine("[red]Ошибка входа. Попробуйте снова.[/]");
+            else
+                UserManager.SaveUserData(_user);
+        }
     }
 
     public async Task MainAsync()
     {
         SettingsManager.SettingsChanged += () => { _settings = SettingsManager.LoadSettings(); };
+        UserManager.UserDataChanged += () => { UserManager.PrintUserData(_user); };
         _settings = SettingsManager.LoadSettings();
-        _user = _userManager.LoadUserData();
-        var cipherModule = new SelectionPrompt<string>().Title("Модуль шифрования")
-            .AddChoices("Зашифровать", "Расшифровать", "Получить сообщение", "Добавить сообщение",
-                "Посмотреть сообщения", "Настройки шифрования", "Выход из программы").EnableSearch()
-            .MoreChoicesText("[green]Используйте стрелки для просмотра[/]");
-        var userModule = new SelectionPrompt<string>().Title("Модуль пользователя").AddChoices("Изменить пароль",
-                "Посмотреть историю запросов",
-                "Удалить историю запросов", "Выход из программы").EnableSearch()
-            .MoreChoicesText("[green]Используйте стрелки для просмотра[/]");
-        var textPrompt =
-            new TextPrompt<bool>("[orange1]Выберите модуль:[/] Модуль пользователя - 1, Модуль шифрования - 2")
-                .AddChoice(true).AddChoice(false).WithConverter(choice => choice ? "1" : "2");
-        if (_user.Login == null
-            || _user.Jwt == string.Empty)
-        {
-            AnsiConsole.MarkupLine(_user.Login == null
-                ? "[red]Данные об пользователе не найдены.[/]"
-                : "[red]Токен не найден. Скорее всего он просрочен.[/]");
-            while (!await RegisterLogin())
-            {
-            }
+        _user = UserManager.LoadUserData();
 
-            _userManager.SaveUserData(_user);
-        }
 
-        _userManager.PrintUserData(_user);
+        await EnsureUserAuthenticated();
+
         while (true)
         {
-            var confirmation = AnsiConsole.Prompt(textPrompt);
+            var moduleSelection = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                .Title("Выберите модуль:")
+                .AddChoices("Модуль пользователя", "Модуль шифрования", "Перейти в регистрацию/логин",
+                    "Выход из программы"));
 
-            switch (confirmation)
+            switch (moduleSelection)
             {
-                case true:
-                    var userResult = AnsiConsole.Prompt(userModule);
-
-                    switch (userResult)
-                    {
-                        case "Изменить пароль":
-                            var oldPassword =
-                                AnsiConsole.Prompt(new TextPrompt<string>("Введите старый пароль: ").Secret());
-                            var newPassword =
-                                AnsiConsole.Prompt(new TextPrompt<string>("Введите новый пароль: ").Secret());
-                            var confirmNewPassword =
-                                AnsiConsole.Prompt(new TextPrompt<string>("Подтвердите новый пароль: ").Secret());
-
-                            if (newPassword == confirmNewPassword)
-                            {
-                                var token = await _client.PatchPasswordAsync(new
-                                    { _user.Login, Password = oldPassword, NewPassword = newPassword });
-                                AnsiConsole.MarkupLine("[green]Пароль успешно изменён![/]");
-                                _user.Jwt = token;
-                            }
-                            else
-                            {
-                                AnsiConsole.MarkupLine("[red]Пароли не совпадают![/]");
-                                goto case "Изменить пароль";
-                            }
-
-                            break;
-
-                        case "Посмотреть историю запросов":
-                            var history = await _client.GetRequestHistoryAsync(_user.Jwt);
-                            AnsiConsole.MarkupLine("[blue]История запросов:[/]");
-                            var table = new Table()
-                                .BorderColor(Color.Green)
-                                .AddColumn("Логин")
-                                .AddColumn("Тип запроса")
-                                .AddColumn("Детали запроса");
-                            foreach (var entry in history)
-                                table.AddRow(entry.Login, entry.QueryType, entry.QueryDetails);
-                            AnsiConsole.Write(table);
-                            break;
-
-                        case "Удалить историю запросов":
-                            await _client.DeleteRequestHistoryAsync(_user.Jwt);
-                            AnsiConsole.MarkupLine("[green]История запросов успешно удалена![/]");
-                            break;
-
-                        case "Выход из программы":
-                            Environment.Exit(0);
-                            break;
-                    }
-
+                case "Модуль пользователя":
+                    await UserModule();
                     break;
 
-                case false:
-                    var cipherResult = AnsiConsole.Prompt(cipherModule);
+                case "Модуль шифрования":
+                    await CipherModule();
+                    break;
 
-                    switch (cipherResult)
-                    {
-                        case "Зашифровать":
-                            var useSavedSettings = await AnsiConsole.ConfirmAsync("Использовать сохраненные настройки?");
+                case "Перейти в регистрацию/логин":
+                    await RegisterLogin();
+                    UserManager.SaveUserData(_user);
+                    break;
 
-                            int encryptionRowCount;
-                            string encryptionKey;
-                            if (useSavedSettings)
-                            {
-                                encryptionRowCount = _settings.RowCount;
-                                encryptionKey = _settings.SecretKey;
-                                AnsiConsole.MarkupLine("[yellow]Используются сохраненные настройки:[/]");
-                                AnsiConsole.MarkupLine($"[blue]Количество строк:[/] {encryptionRowCount}");
-                                AnsiConsole.MarkupLine($"[blue]Ключ:[/] {encryptionKey}");
-                            }
-                            else
-                            {
-                                encryptionRowCount = AnsiConsole.Ask<int>("Введите количество строк для шифрования:");
-                                encryptionKey = AnsiConsole.Ask<string>("Введите ключ для шифрования:");
-                            }
-                            var encryptionId = AnsiConsole.Ask<int>("Введите номер сообщения:");
-                            await _client.EncryptTextAsync(_user.Jwt, encryptionRowCount, encryptionKey, encryptionId);
-                            AnsiConsole.MarkupLine(await _client.GetMessageAsync(_user.Jwt, encryptionId));
-                            break;
-
-                        case "Расшифровать":
-                            useSavedSettings = await AnsiConsole.ConfirmAsync("Использовать сохраненные настройки?");
-
-                            int decryptionRowCount;
-                            string decryptionKey;
-                            if (useSavedSettings)
-                            {
-                                decryptionRowCount = _settings.RowCount;
-                                decryptionKey = _settings.SecretKey;
-                                AnsiConsole.MarkupLine("[yellow]Используются сохраненные настройки:[/]");
-                                AnsiConsole.MarkupLine($"[blue]Количество строк:[/] {decryptionRowCount}");
-                                AnsiConsole.MarkupLine($"[blue]Ключ:[/] {decryptionKey}");
-                            }
-                            else
-                            {
-                                decryptionRowCount =
-                                    AnsiConsole.Ask<int>("Введите количество строк для расшифрования:");
-                                decryptionKey = AnsiConsole.Ask<string>("Введите ключ для расшифрования:");
-                            }
-
-                            var decryptionId = AnsiConsole.Ask<int>("Введите номер сообщения:");
-
-                            await _client.DecryptTextAsync(_user.Jwt, decryptionRowCount.ToString(), decryptionKey,
-                                decryptionId);
-                            AnsiConsole.MarkupLine(await _client.GetMessageAsync(_user.Jwt, decryptionId));
-                            break;
-
-
-                        case "Добавить сообщение":
-                            await _client.AddMessageAsync(_user.Jwt,
-                                AnsiConsole.Prompt(new TextPrompt<string>("Введите сообщение:")));
-                            break;
-                        case "Посмотреть сообщения":
-                            var messages = await _client.GetMessagesAsync(_user.Jwt);
-                            var table = new Table()
-                                .BorderColor(Color.Green)
-                                .AddColumn("Номер")
-                                .AddColumn("Сообщение");
-                            foreach (var entry in messages)
-                                table.AddRow(entry.MessageNumber.ToString(), entry.Text);
-                            AnsiConsole.Write(table);
-                            break;
-                        case "Получить сообщение":
-                            var messageValue = await _client.GetMessageAsync(_user.Jwt,
-                                AnsiConsole.Prompt(new TextPrompt<int>("Введите номер сообщения:")));
-                            AnsiConsole.MarkupLine($"[green]Сообщение:[/] {messageValue}");
-                            break;
-                        case "Выход из программы":
-                            return;
-                        case "Настройки шифрования":
-
-                            AnsiConsole.MarkupLine("[yellow]Текущие настройки:[/]");
-                            AnsiConsole.MarkupLine($"[blue]Количество строк:[/] {_settings.RowCount}");
-                            AnsiConsole.MarkupLine($"[blue]Ключ:[/] {_settings.SecretKey}");
-
-                            var newRowCount =
-                                AnsiConsole.Ask(
-                                    "Введите новое количество строк для шифрования (или оставьте текущее значение):",
-                                    _settings.RowCount);
-                            var newSecretKey = AnsiConsole.Ask<string>(
-                                "Введите новый ключ для шифрования (или оставьте текущий):", _settings.SecretKey);
-
-                            var newSettings = new Settings
-                            {
-                                RowCount = newRowCount,
-                                SecretKey = newSecretKey
-                            };
-
-                            SettingsManager.SaveSettings(newSettings);
-                            AnsiConsole.MarkupLine("[green]Настройки успешно обновлены![/]");
-                            break;
-                    }
-
+                case "Выход из программы":
+                    Environment.Exit(0);
                     break;
             }
         }
+    }
+
+    private async Task UserModule()
+    {
+        var userAction = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Модуль пользователя")
+            .AddChoices("Изменить пароль", "Посмотреть историю запросов", "Удалить историю запросов", "Назад"));
+
+        switch (userAction)
+        {
+            case "Изменить пароль":
+                await ChangePassword();
+                break;
+
+            case "Посмотреть историю запросов":
+                await ShowRequestHistory();
+                break;
+
+            case "Удалить историю запросов":
+                await DeleteRequestHistory();
+                break;
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        var oldPassword = AnsiConsole.Prompt(new TextPrompt<string>("Введите старый пароль:").Secret());
+        var newPassword = AnsiConsole.Prompt(new TextPrompt<string>("Введите новый пароль:").Secret());
+        var confirmPassword = AnsiConsole.Prompt(new TextPrompt<string>("Подтвердите новый пароль:").Secret());
+
+        if (newPassword == confirmPassword)
+        {
+            _user.Jwt = await _client.PatchPasswordAsync(new
+                { _user.Login, Password = oldPassword, NewPassword = newPassword });
+            AnsiConsole.MarkupLine("[green]Пароль успешно изменён![/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[red]Пароли не совпадают![/]");
+            await ChangePassword();
+        }
+    }
+
+    private async Task ShowRequestHistory()
+    {
+        var history = await _client.GetRequestHistoryAsync(_user.Jwt);
+        var table = new Table()
+            .AddColumn("Логин")
+            .AddColumn("Тип запроса")
+            .AddColumn("Детали запроса");
+
+        foreach (var entry in history) table.AddRow(entry.Login, entry.QueryType, entry.QueryDetails);
+
+        AnsiConsole.Write(table);
+    }
+
+    private async Task DeleteRequestHistory()
+    {
+        await _client.DeleteRequestHistoryAsync(_user.Jwt);
+        AnsiConsole.MarkupLine("[green]История запросов успешно удалена![/]");
+    }
+
+    private async Task CipherModule()
+    {
+        var cipherAction = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("Модуль шифрования")
+            .AddChoices("Зашифровать", "Расшифровать", "Добавить сообщение", "Посмотреть сообщения",
+                "Получить сообщение", "Настройки шифрования", "Назад"));
+
+        switch (cipherAction)
+        {
+            case "Зашифровать":
+                await EncryptMessage();
+                break;
+
+            case "Расшифровать":
+                await DecryptMessage();
+                break;
+
+            case "Добавить сообщение":
+                await AddMessage();
+                break;
+
+            case "Посмотреть сообщения":
+                await ViewMessages();
+                break;
+
+            case "Получить сообщение":
+                await GetMessage();
+                break;
+
+            case "Настройки шифрования":
+                UpdateEncryptionSettings();
+                break;
+        }
+    }
+
+    private async Task EncryptMessage()
+    {
+        var useSavedSettings = AnsiConsole.Confirm("Использовать сохранённые настройки?");
+
+        var encryptionRowCount = useSavedSettings
+            ? _settings.RowCount
+            : AnsiConsole.Ask<int>("Введите количество строк для шифрования:");
+        var encryptionKey = useSavedSettings
+            ? _settings.SecretKey
+            : AnsiConsole.Ask<string>("Введите ключ для шифрования:");
+        var encryptionId = AnsiConsole.Ask<int>("Введите номер сообщения:");
+
+        await _client.EncryptTextAsync(_user.Jwt, encryptionRowCount, encryptionKey, encryptionId);
+        AnsiConsole.MarkupLine(await _client.GetMessageAsync(_user.Jwt, encryptionId));
+    }
+
+    private async Task DecryptMessage()
+    {
+        var useSavedSettings = AnsiConsole.Confirm("Использовать сохранённые настройки?");
+
+        var decryptionRowCount = useSavedSettings
+            ? _settings.RowCount
+            : AnsiConsole.Ask<int>("Введите количество строк для расшифрования:");
+        var decryptionKey = useSavedSettings
+            ? _settings.SecretKey
+            : AnsiConsole.Ask<string>("Введите ключ для расшифрования:");
+        var decryptionId = AnsiConsole.Ask<int>("Введите номер сообщения:");
+
+        await _client.DecryptTextAsync(_user.Jwt, decryptionRowCount.ToString(), decryptionKey, decryptionId);
+        AnsiConsole.MarkupLine(await _client.GetMessageAsync(_user.Jwt, decryptionId));
+    }
+
+    private async Task AddMessage()
+    {
+        var message = AnsiConsole.Prompt(new TextPrompt<string>("Введите сообщение:"));
+        await _client.AddMessageAsync(_user.Jwt, message);
+    }
+
+    private async Task ViewMessages()
+    {
+        var messages = await _client.GetMessagesAsync(_user.Jwt);
+        var table = new Table()
+            .AddColumn("Номер")
+            .AddColumn("Сообщение");
+
+        foreach (var entry in messages) table.AddRow(entry.MessageNumber.ToString(), entry.Text);
+
+        AnsiConsole.Write(table);
+    }
+
+    private async Task GetMessage()
+    {
+        var messageId = AnsiConsole.Ask<int>("Введите номер сообщения:");
+        var message = await _client.GetMessageAsync(_user.Jwt, messageId);
+        AnsiConsole.MarkupLine($"[green]Сообщение:[/] {message}");
+    }
+
+    private void UpdateEncryptionSettings()
+    {
+        AnsiConsole.MarkupLine("[yellow]Текущие настройки:[/]");
+        AnsiConsole.MarkupLine($"[blue]Количество строк:[/] {_settings.RowCount}");
+        AnsiConsole.MarkupLine($"[blue]Ключ:[/] {_settings.SecretKey}");
+
+        var newRowCount = AnsiConsole.Ask("Введите новое количество строк (или оставьте текущее значение):",
+            _settings.RowCount);
+        var newSecretKey = AnsiConsole.Ask("Введите новый ключ (или оставьте текущий):", _settings.SecretKey);
+
+        var newSettings = new Settings { RowCount = newRowCount, SecretKey = newSecretKey };
+        SettingsManager.SaveSettings(newSettings);
+        AnsiConsole.MarkupLine("[green]Настройки успешно обновлены![/]");
     }
 }

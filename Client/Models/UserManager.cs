@@ -1,63 +1,45 @@
-using System.Globalization;
-using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using Spectre.Console;
 using Spectre.Console.Json;
 
 namespace Client.Models;
 
-public class UserManager
+public static class UserManager
 {
     private const string DataFilePath = "user_data.json";
+    public static event Action? UserDataChanged;
 
-    public User LoadUserData()
+    public static User LoadUserData()
     {
-        if (File.Exists(DataFilePath))
-        {
-            var json = File.ReadAllText(DataFilePath);
-            var user = JsonSerializer.Deserialize<User>(json) ?? new User();
+        if (!File.Exists(DataFilePath)) return new User();
+        var json = File.ReadAllText(DataFilePath);
+        var user = JsonSerializer.Deserialize<User>(json) ?? new User();
 
-            // Проверка срока действия токена
-            if (!IsTokenExpired(user.Jwt)) return user;
-            user.Jwt = string.Empty;
+        if (IsTokenExpired(user.JwtExpiry)) return user;
+        user.Jwt = string.Empty;
 
-            return user;
-        }
-
-        return new User();
+        return user;
     }
 
-    public void SaveUserData(User data)
+    public static void SaveUserData(User data)
     {
         var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(DataFilePath, json);
+        UserDataChanged?.Invoke();
     }
 
-    private bool IsTokenExpired(string token)
+    private static bool IsTokenExpired(DateTime expiry)
     {
-        if (string.IsNullOrEmpty(token))
-            return true;
-
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token);
-            
-            return jwtToken.ValidTo < DateTime.UtcNow;
-        }
-        catch
-        {
-            return true;
-        }
+        return expiry >= DateTime.UtcNow;
     }
 
-    public void DeleteUserData()
+    public static void DeleteUserData()
     {
         if (File.Exists(DataFilePath))
             File.Delete(DataFilePath);
     }
 
-    public void PrintUserData(User data)
+    public static void PrintUserData(User data)
     {
         var temp = (User)data.Clone();
         temp.Jwt = data.Jwt[..^70] + new string('*', 70);
