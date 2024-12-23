@@ -23,7 +23,7 @@ public class Controller
             _httpClient.AddDefaultHeader("Content-Type", "application/json");
         }
 
-        private RestRequest PreparRequest(string value, string url = ".")
+        private RestRequest PreparRequest(string value, string url = "")
         {
             var jwt = new JwtAuthenticator(value);
             var request = new RestRequest

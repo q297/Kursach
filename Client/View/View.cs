@@ -125,6 +125,7 @@ internal class View
     {
         var history = await _client.GetRequestHistoryAsync(_user.Jwt);
         var table = new Table()
+            .BorderColor(Color.Aquamarine3)
             .AddColumn("Логин")
             .AddColumn("Тип запроса")
             .AddColumn("Детали запроса");

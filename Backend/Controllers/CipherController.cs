@@ -9,7 +9,7 @@ namespace WebApplication1.Controllers;
 [Route("api/cipher")]
 [Consumes("application/json")]
 [Produces("application/json")]
-public class CipherController(SqlCipherControllerFactory factory, ILogger<Controller> logger) : ControllerBase
+public class CipherController(SqlCipherControllerFactory factory, ILogger<UserController> logger) : ControllerBase
 {
     private readonly ILogger _logger = logger;
     private readonly SqlCipherController _sqlCipherController = factory.CreateSqlCipherController();

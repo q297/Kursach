@@ -10,7 +10,8 @@ namespace WebApplication1.Controllers;
 [Route("api")]
 [Consumes("application/json")]
 [Produces("application/json")]
-public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRepositoryFactory) : ControllerBase
+public class UserController(ILogger<UserController> logger, UserRepositoryFactory userRepositoryFactory)
+    : ControllerBase
 {
     private readonly ILogger _logger = logger;
     private readonly UserRepository _userRepository = userRepositoryFactory.CreateUserRepository();
@@ -42,7 +43,7 @@ public class Controller(ILogger<Controller> logger, UserRepositoryFactory userRe
     ///     Авторизация
     /// </summary>
     /// <param name="user"></param>
-    /// <returns>Возвращается JWT токен </returns>
+    /// <returns>Возвращает JWT токен </returns>
     [HttpPost("login")]
     public async Task<IActionResult> LoginUserAsync([FromBody] User user)
     {
