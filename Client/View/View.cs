@@ -145,7 +145,8 @@ internal class View
     {
         var cipherAction = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Модуль шифрования")
-            .AddChoices("Зашифровать", "Расшифровать", "Добавить сообщение", "Посмотреть сообщения",
+            .AddChoices("Зашифровать", "Расшифровать", "Добавить сообщение", "Удалить сообщение",
+                "Посмотреть сообщения",
                 "Получить сообщение", "Настройки шифрования", "Назад"));
 
         switch (cipherAction)
@@ -161,7 +162,10 @@ internal class View
             case "Добавить сообщение":
                 await AddMessage();
                 break;
+            case "Удалить сообщение":
+                await DeleteMessage();
 
+                break;
             case "Посмотреть сообщения":
                 await ViewMessages();
                 break;
@@ -212,6 +216,12 @@ internal class View
     {
         var message = AnsiConsole.Prompt(new TextPrompt<string>("Введите сообщение:"));
         await _client.AddMessageAsync(_user.Jwt, message);
+    }
+
+    private async Task DeleteMessage()
+    {
+        var messageId = AnsiConsole.Ask<int>("Введите номер сообщения:");
+        await _client.DeleteMessageAsync(_user.Jwt, messageId);
     }
 
     private async Task ViewMessages()

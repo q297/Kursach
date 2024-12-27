@@ -1,4 +1,4 @@
-internal class Crypter
+internal class Cipher
 {
     private string _keyword;
     private int[] _permutation;

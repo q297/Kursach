@@ -172,5 +172,16 @@ public class Controller
             AnsiConsole.MarkupLineInterpolated(
                 $"[green]Сообщение отправлено успешно.[/] [cornsilk1]Номер сообщения[/] {response.Content}");
         }
+
+        public async Task DeleteMessageAsync(string userJwt, int messageId)
+        {
+            var request = PreparRequest(userJwt, "/cipher/" + messageId);
+            var response = await _httpClient.DeleteAsync(request);
+            if (!response.IsSuccessful)
+                AnsiConsole.MarkupLineInterpolated(
+                    $"[red]Произошла ошибка:[/] {response.StatusCode} - {response.Content}");
+            else
+                AnsiConsole.MarkupLine("[green]Сообщение успешно удалено[/]");
+        }
     }
 }

@@ -14,7 +14,7 @@ public class SqlCipherControllerFactory(ConfigurationString configurationString)
 
 public class SqlCipherController(IDbConnection dbConnection)
 {
-    private readonly Crypter _crypter = new();
+    private readonly Cipher _cipher = new();
 
     public async Task<int> AddTextAsync(string text, string userLogin)
     {
@@ -44,19 +44,19 @@ public class SqlCipherController(IDbConnection dbConnection)
         await dbConnection.ExecuteAsync(sql, new { Id = id, Text = request, UserLogin = login });
     }
 
-    public async Task DeleteTextAsync(int id, string login)
+    public async Task<int> DeleteTextAsync(int id, string login)
     {
-        const string sql = "DELETE FROM Messages WHERE Id = @Id AND UserLogin = @UserLogin;";
-        await dbConnection.ExecuteAsync(sql, new { Id = id, UserLogin = login });
+        const string sql = "DELETE FROM Messages WHERE MessageNumber = @Id AND UserLogin = @UserLogin;";
+        return await dbConnection.QuerySingleOrDefaultAsync<int>(sql, new { Id = id, UserLogin = login });
     }
 
     public async Task<bool> EncryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)
     {
         var text = await GetTextAsync(id, login);
         if (text == null) return false;
-        _crypter.Keyword = cipherUserSettings.SecretKey;
-        _crypter.Height = cipherUserSettings.RowCount;
-        await ChangeTextAsync(id, _crypter.Encode(text), login);
+        _cipher.Keyword = cipherUserSettings.SecretKey;
+        _cipher.Height = cipherUserSettings.RowCount;
+        await ChangeTextAsync(id, _cipher.Encode(text), login);
         return true;
     }
 
@@ -64,9 +64,9 @@ public class SqlCipherController(IDbConnection dbConnection)
     {
         var text = await GetTextAsync(id, login);
         if (text == null) return false;
-        _crypter.Keyword = cipherUserSettings.SecretKey;
-        _crypter.Height = cipherUserSettings.RowCount;
-        await ChangeTextAsync(id, _crypter.Decode(text), login);
+        _cipher.Keyword = cipherUserSettings.SecretKey;
+        _cipher.Height = cipherUserSettings.RowCount;
+        await ChangeTextAsync(id, _cipher.Decode(text), login);
         return true;
     }
 }

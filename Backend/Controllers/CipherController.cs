@@ -72,8 +72,8 @@ public class CipherController(SqlCipherControllerFactory factory, ILogger<UserCo
     public async Task<IActionResult> DeleteTextAsync([FromRoute] int id)
     {
         var login = User.Identity!.Name!;
-        await _sqlCipherController.DeleteTextAsync(id, login);
-        return Ok("Текст удалён");
+        var result = await _sqlCipherController.DeleteTextAsync(id, login);
+        return result == 0 ? NotFound("Текст не найден") : Ok("Текст удалён");
     }
 
     /// <summary>
