@@ -154,8 +154,12 @@ public class Controller
             var request = PreparRequest(userJwt, "/cipher/" + id);
             var response = await _httpClient.GetAsync(request);
             if (!response.IsSuccessful)
+            {
                 AnsiConsole.MarkupLineInterpolated(
                     $"[red]Произошла ошибка:[/] {response.StatusCode} - {response.Content}");
+                return string.Empty;
+            }
+                
             return response.Content!;
         }
 

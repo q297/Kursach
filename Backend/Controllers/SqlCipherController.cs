@@ -47,7 +47,7 @@ public class SqlCipherController(IDbConnection dbConnection)
     public async Task<int> DeleteTextAsync(int id, string login)
     {
         const string sql = "DELETE FROM Messages WHERE MessageNumber = @Id AND UserLogin = @UserLogin;";
-        return await dbConnection.QuerySingleOrDefaultAsync<int>(sql, new { Id = id, UserLogin = login });
+        return await dbConnection.ExecuteAsync(sql, new { Id = id, UserLogin = login });
     }
 
     public async Task<bool> EncryptTextAsync(int id, string login, CipherUserSettings cipherUserSettings)

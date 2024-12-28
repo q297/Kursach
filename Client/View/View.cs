@@ -43,6 +43,7 @@ internal class View
 
     public async Task MainAsync()
     {
+        
         SettingsManager.SettingsChanged += () => { _settings = SettingsManager.LoadSettings(); };
         UserManager.UserDataChanged += () => { UserManager.PrintUserData(_user); };
         _settings = SettingsManager.LoadSettings();
@@ -53,6 +54,15 @@ internal class View
 
         while (true)
         {
+            Console.CancelKeyPress += (sender, eventArgs) =>
+            {
+                // Отключаем завершение программы по Ctrl+C
+                eventArgs.Cancel = true;
+
+                // Выводим сообщение
+                AnsiConsole.MarkupLine("[red]Получено нажатие Ctrl+C! Отмена операции");
+                
+            };
             var moduleSelection = AnsiConsole.Prompt(new SelectionPrompt<string>()
                 .Title("Выберите модуль:")
                 .AddChoices("Модуль пользователя", "Модуль шифрования", "Перейти в регистрацию/логин",
@@ -240,7 +250,7 @@ internal class View
     {
         var messageId = AnsiConsole.Ask<int>("Введите номер сообщения:");
         var message = await _client.GetMessageAsync(_user.Jwt, messageId);
-        AnsiConsole.MarkupLine($"[green]Сообщение:[/] {message}");
+        if(!string.IsNullOrEmpty(message)) AnsiConsole.MarkupLine($"[green]Сообщение:[/] {message}");
     }
 
     private void UpdateEncryptionSettings()
