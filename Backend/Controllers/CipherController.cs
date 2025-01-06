@@ -47,7 +47,6 @@ public class CipherController(SqlCipherControllerFactory factory, ILogger<UserCo
     {
         var login = User.Identity!.Name!;
         var text = await _sqlCipherController.GetTextAsync(login);
-        Debug.WriteLine(text);
         return text == null ? NotFound("Сообщения отсутствуют") : Ok(text);
     }
 
@@ -60,8 +59,8 @@ public class CipherController(SqlCipherControllerFactory factory, ILogger<UserCo
     public async Task<IActionResult> ChangeTextAsync([FromRoute] int id, [FromBody] string request)
     {
         var login = User.Identity!.Name!;
-        await _sqlCipherController.ChangeTextAsync(id, request, login);
-        return Ok("Текст изменён");
+        var result = await _sqlCipherController.ChangeTextAsync(id, request, login);
+        return result == false ? NotFound("Текст не найден") : Ok("Текст изменён");
     }
 
     /// <summary>

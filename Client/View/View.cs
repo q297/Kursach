@@ -43,7 +43,6 @@ internal class View
 
     public async Task MainAsync()
     {
-        
         SettingsManager.SettingsChanged += () => { _settings = SettingsManager.LoadSettings(); };
         UserManager.UserDataChanged += () => { UserManager.PrintUserData(_user); };
         _settings = SettingsManager.LoadSettings();
@@ -56,12 +55,8 @@ internal class View
         {
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
-                // Отключаем завершение программы по Ctrl+C
                 eventArgs.Cancel = true;
-
-                // Выводим сообщение
-                AnsiConsole.MarkupLine("[red]Получено нажатие Ctrl+C! Отмена операции");
-                
+                AnsiConsole.MarkupLine("[red]Получено нажатие Ctrl+C! Отмена операции[/]");
             };
             var moduleSelection = AnsiConsole.Prompt(new SelectionPrompt<string>()
                 .Title("Выберите модуль:")
@@ -155,7 +150,7 @@ internal class View
     {
         var cipherAction = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Модуль шифрования")
-            .AddChoices("Зашифровать", "Расшифровать", "Добавить сообщение", "Удалить сообщение",
+            .AddChoices("Зашифровать", "Расшифровать", "Добавить сообщение", "Изменить сообщение", "Удалить сообщение",
                 "Посмотреть сообщения",
                 "Получить сообщение", "Настройки шифрования", "Назад"));
 
@@ -171,6 +166,9 @@ internal class View
 
             case "Добавить сообщение":
                 await AddMessage();
+                break;
+            case "Изменить сообщение":
+                await UpdateMessage();
                 break;
             case "Удалить сообщение":
                 await DeleteMessage();
@@ -228,6 +226,13 @@ internal class View
         await _client.AddMessageAsync(_user.Jwt, message);
     }
 
+    private async Task UpdateMessage()
+    {
+        var message = AnsiConsole.Prompt(new TextPrompt<string>("Введите сообщение"));
+        var messageId = AnsiConsole.Ask<int>("Введите номер сообщения:");
+        await _client.PatchMessageAsync(_user.Jwt, messageId, message);
+    }
+
     private async Task DeleteMessage()
     {
         var messageId = AnsiConsole.Ask<int>("Введите номер сообщения:");
@@ -250,7 +255,7 @@ internal class View
     {
         var messageId = AnsiConsole.Ask<int>("Введите номер сообщения:");
         var message = await _client.GetMessageAsync(_user.Jwt, messageId);
-        if(!string.IsNullOrEmpty(message)) AnsiConsole.MarkupLine($"[green]Сообщение:[/] {message}");
+        if (!string.IsNullOrEmpty(message)) AnsiConsole.MarkupLine($"[green]Сообщение:[/] {message}");
     }
 
     private void UpdateEncryptionSettings()

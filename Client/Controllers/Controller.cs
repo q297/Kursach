@@ -5,7 +5,7 @@ using Spectre.Console;
 
 namespace Client.Controllers;
 
-public class Controller
+public static class Controller
 {
     public class ApiClient
     {
@@ -23,7 +23,7 @@ public class Controller
             _httpClient.AddDefaultHeader("Content-Type", "application/json");
         }
 
-        private RestRequest PreparRequest(string value, string url = "")
+        private static RestRequest PreparRequest(string value, string url = "")
         {
             var jwt = new JwtAuthenticator(value);
             var request = new RestRequest
@@ -95,8 +95,13 @@ public class Controller
             request.AddJsonBody($"\"{message}\"");
             var response = await _httpClient.PatchAsync(request);
             if (!response.IsSuccessful)
+            {
                 AnsiConsole.MarkupLineInterpolated(
                     $"[red]Произошла ошибка:[/] {response.StatusCode} - {response.Content}");
+                return;
+            }
+                
+            AnsiConsole.MarkupLine("[green]Сообщение изменено[/]");
         }
 
         public async Task DeleteRequestHistoryAsync(string userJwt)
@@ -144,8 +149,12 @@ public class Controller
             var request = PreparRequest(userJwt, "/cipher/");
             var response = await _httpClient.ExecuteAsync<List<MessagesResponse>>(request, Method.Get);
             if (!response.IsSuccessful)
+            {
                 AnsiConsole.MarkupLineInterpolated(
                     $"[red]Произошла ошибка:[/] {response.StatusCode} - {response.Content}");
+                return Enumerable.Empty<MessagesResponse>();
+            }
+                
             return response.Data!;
         }
 
@@ -159,7 +168,7 @@ public class Controller
                     $"[red]Произошла ошибка:[/] {response.StatusCode} - {response.Content}");
                 return string.Empty;
             }
-                
+
             return response.Content!;
         }
 

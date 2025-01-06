@@ -38,10 +38,10 @@ public class SqlCipherController(IDbConnection dbConnection)
             new { MessageNumber = messageNumber, UserLogin = login });
     }
 
-    public async Task ChangeTextAsync(int id, string request, string login)
+    public async Task<bool> ChangeTextAsync(int messageNumber, string request, string login)
     {
         const string sql = "UPDATE Messages SET Text = @Text WHERE MessageNumber = @Id AND UserLogin = @UserLogin;";
-        await dbConnection.ExecuteAsync(sql, new { Id = id, Text = request, UserLogin = login });
+        return await dbConnection.ExecuteAsync(sql, new { Id = messageNumber, Text = request, UserLogin = login }) != 0;
     }
 
     public async Task<int> DeleteTextAsync(int id, string login)
